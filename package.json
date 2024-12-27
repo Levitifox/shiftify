@@ -5,8 +5,8 @@
         "node": ">= 12"
     },
     "scripts": {
-        "build": "parcel build --public-url . src/index.ts src/index.html src/main.ts",
-        "watch": "parcel watch --public-url . src/index.ts src/index.html src/main.ts",
+        "build": "parcel build --public-url . src/index.ts src/index.html src/main.tsx",
+        "watch": "parcel watch --public-url . src/index.ts src/index.html src/main.tsx",
         "start": "electron dist",
         "fmt": "prettier -w ."
     },
@@ -17,8 +17,14 @@
     "devDependencies": {
         "@babel/preset-typescript": "^7.26.0",
         "@types/electron": "^1.4.38",
+        "@types/react": "^19.0.2",
+        "@types/react-dom": "^19.0.2",
         "electron": "^33.2.1",
         "parcel": "^2.13.3",
         "prettier": "^3.4.2"
+    },
+    "dependencies": {
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0"
     }
 }
