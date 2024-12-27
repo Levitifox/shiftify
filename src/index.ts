@@ -1,9 +1,13 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 
+ipcMain.handle("dialog:showOpenDialog", async (_event, options) => {
+    return await dialog.showOpenDialog(options);
+});
+
 app.whenReady().then(() => {
-    const win = new BrowserWindow({
+    const mainWindow = new BrowserWindow({
         width: 1100,
         height: 700,
         webPreferences: {
@@ -12,7 +16,7 @@ app.whenReady().then(() => {
         },
     });
 
-    win.loadFile("index.html");
+    mainWindow.loadFile("index.html");
 });
 
 app.on("window-all-closed", () => {

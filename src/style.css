@@ -20,3 +20,12 @@ body,
     width: 100%;
     height: 100%;
 }
+
+/* .main-pane {
+    display: flex;
+    flex-direction: column;
+}
+
+.main-pane_row {
+    display: flex;
+} */
