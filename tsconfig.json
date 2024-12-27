@@ -1,0 +1,13 @@
+{
+    "include": ["src/**/*"],
+    "compilerOptions": {
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "jsx": "react-jsx",
+        "resolveJsonModule": true,
+        "strict": true,
+        "exactOptionalPropertyTypes": true,
+        "noImplicitOverride": true,
+        "noImplicitReturns": true
+    }
+}
