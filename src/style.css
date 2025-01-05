@@ -21,11 +21,145 @@ body,
     height: 100%;
 }
 
-/* .main-pane {
+#app {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(0deg, #0a0b0c 0%, #242529 100%);
+    color: #f0f0f0;
+    overflow: auto;
+}
+
+h1 {
+    font-size: 4rem;
+    color: #ffffff;
+    margin: 10px 0 0 0;
+    text-align: center;
+}
+
+.main-pane {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 20px;
+    gap: 20px;
 }
 
 .main-pane_row {
     display: flex;
-} */
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+
+    label {
+        color: #ccc;
+        font-size: 1.1rem;
+        flex: none;
+    }
+}
+
+.main-pane_row_label {
+    font-size: 1.1rem;
+    color: #cccccc;
+    flex: 0 0 80px;
+}
+
+.main-pane_row_input {
+    flex: 1;
+    padding: 10px;
+    font-size: 1rem;
+    background-color: #212327;
+    color: #ffffff;
+    border: 1px solid #41444b;
+    border-radius: 8px;
+}
+
+.main-pane_row_browse {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background: linear-gradient(45deg, #4c8bf5, #3274d6);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition:
+        transform 0.2s,
+        background-color 0.3s;
+
+    &:hover {
+        background: linear-gradient(45deg, #3274d6, #205cb5);
+        transform: scale(1.05);
+    }
+
+    &:active {
+        transform: scale(0.95);
+    }
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    background-color: #212327;
+    color: #ffffff;
+    border: 1px solid #41444b;
+    border-radius: 8px;
+    appearance: none;
+    outline: none;
+
+    &:hover {
+        border-color: #4c8bf5;
+    }
+
+    option {
+        background-color: #212327;
+        color: #ffffff;
+    }
+}
+
+input[type="checkbox"] {
+    margin-left: 10px;
+    transform: scale(1.1);
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #007bff;
+    border-radius: 4px;
+    transition: border-color 0.2s;
+
+    &:checked {
+        background-color: #007bff;
+        border-color: #0056b3;
+    }
+
+    &:hover {
+        border-color: #0056b3;
+    }
+
+    &:focus {
+        outline: none;
+        box-shadow: 0 0 4px #007bff80;
+    }
+}
+
+.main-pane_row_process {
+    width: 100%;
+    padding: 12px 30px;
+    font-size: 1.2rem;
+    background: linear-gradient(45deg, #4c8bf5, #3274d6);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition:
+        transform 0.2s,
+        background-color 0.3s;
+
+    &:hover {
+        background: linear-gradient(45deg, #3274d6, #205cb5);
+        transform: scale(1.02);
+    }
+
+    &:active {
+        transform: scale(0.95);
+    }
+}
