@@ -69,7 +69,7 @@ function BrowseButton({
     );
 }
 
-async function getPossibleGameVersions(allVersions: boolean): Promise<string[]> {
+async function queryPossibleGameVersions(allVersions: boolean): Promise<string[]> {
     try {
         const response = await fetch("https://launchermeta.mojang.com/mc/game/version_manifest.json");
         if (!response.ok) {
@@ -87,18 +87,19 @@ async function getPossibleGameVersions(allVersions: boolean): Promise<string[]> 
 function Main() {
     const [releaseGameVersions, setReleaseGameVersions] = useState<string[]>([]);
     const [allGameVersions, setAllGameVersions] = useState<string[]>([]);
+
+    useEffect(() => {
+        (async () => {
+            setReleaseGameVersions(await queryPossibleGameVersions(false));
+            setAllGameVersions(await queryPossibleGameVersions(true));
+        })();
+    }, []);
+
     const [inputPathList, setInputPathList] = useState("");
     const [outputPathList, setOutputPathList] = useState("");
     const [loader, setLoader] = useState("");
     const [gameVersion, setGameVersion] = useState("");
     const [showAllVersions, setShowAllVersions] = useState(false);
-
-    useEffect(() => {
-        (async () => {
-            setReleaseGameVersions(await getPossibleGameVersions(false));
-            setAllGameVersions(await getPossibleGameVersions(true));
-        })();
-    }, []);
 
     const possibleGameVersions = showAllVersions ? allGameVersions : releaseGameVersions;
 
