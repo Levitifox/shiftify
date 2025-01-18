@@ -1,7 +1,7 @@
 import { webUtils, OpenDialogOptions, ipcRenderer } from "electron";
 import { createRoot } from "react-dom/client";
 import * as fs from "node:fs";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 async function showOpenDialog(options: OpenDialogOptions): Promise<{ canceled: boolean; filePaths: string[] }> {
     return await ipcRenderer.invoke("dialog:showOpenDialog", options);
@@ -73,7 +73,7 @@ async function queryPossibleGameVersions(allVersions: boolean): Promise<string[]
     try {
         const response = await fetch("https://launchermeta.mojang.com/mc/game/version_manifest.json");
         if (!response.ok) {
-            throw new Error("Failed to fetch Minecraft versions");
+            throw new Error(`Failed to fetch Minecraft versions: ${await response.text()}`);
         }
         const data: { versions: { id: string; type: string }[] } = await response.json();
         const filteredVersions = data.versions.filter(version => version.type === "release" || allVersions);
@@ -82,6 +82,19 @@ async function queryPossibleGameVersions(allVersions: boolean): Promise<string[]
         alert("Error fetching Minecraft versions: " + error);
         return [];
     }
+}
+
+type Mod = {
+    path: string;
+    basename: string;
+};
+
+async function gatherModsFromPath(path: string): Promise<Mod[]> {
+    return [{ path: "C:\\test.jar", basename: "test.jar" }];
+}
+
+async function gatherModsFromPaths(paths: string[]): Promise<Mod[]> {
+    return (await Promise.all(paths.map(path => gatherModsFromPath(path)))).flat();
 }
 
 function Main() {
@@ -96,6 +109,7 @@ function Main() {
     }, []);
 
     const [inputPathList, setInputPathList] = useState("");
+    const currentInputPathList = useRef("");
     const [outputPathList, setOutputPathList] = useState("");
     const [loader, setLoader] = useState("");
     const [gameVersion, setGameVersion] = useState("");
@@ -103,15 +117,32 @@ function Main() {
 
     const possibleGameVersions = showAllVersions ? allGameVersions : releaseGameVersions;
 
+    function putInputPathList(newPathList: string) {
+        currentInputPathList.current = newPathList;
+        setInputPathList(newPathList);
+    }
+
+    const [mods, setMods] = useState<Mod[]>([]);
+
+    useEffect(() => {
+        (async () => {
+            const inputPaths = inputPathList === "" ? [] : inputPathList.split(";");
+            const newMods = await gatherModsFromPaths(inputPaths);
+            if (currentInputPathList.current === inputPathList) {
+                setMods(newMods);
+            }
+        })();
+    }, [inputPathList]);
+
     return (
         <>
             <h1>Shiftify</h1>
             <div className="main-pane">
                 <div className="main-pane_row">
                     <div className="main-pane_row_label">Input:</div>
-                    <FileInput multiple pathList={inputPathList} setPathList={setInputPathList} className="main-pane_row_input"></FileInput>
-                    <BrowseButton type_="file" multiple setPathList={setInputPathList} className="main-pane_row_browse"></BrowseButton>
-                    <BrowseButton type_="directory" multiple setPathList={setInputPathList} className="main-pane_row_browse"></BrowseButton>
+                    <FileInput multiple pathList={inputPathList} setPathList={putInputPathList} className="main-pane_row_input"></FileInput>
+                    <BrowseButton type_="file" multiple setPathList={putInputPathList} className="main-pane_row_browse"></BrowseButton>
+                    <BrowseButton type_="directory" multiple setPathList={putInputPathList} className="main-pane_row_browse"></BrowseButton>
                 </div>
                 <div className="main-pane_row">
                     <div className="main-pane_row_label">Output:</div>
@@ -192,6 +223,13 @@ Game version: ${gameVersion}`);
                         Process
                     </button>
                 </div>
+            </div>
+            <div className="status-pane">
+                {mods.map(mod => (
+                    <div className="status-pane_mod" title={mod.path}>
+                        {mod.basename}
+                    </div>
+                ))}
             </div>
         </>
     );
