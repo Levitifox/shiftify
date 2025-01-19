@@ -51,7 +51,7 @@ h1 {
     gap: 10px;
 
     label {
-        color: #ccc;
+        color: #cccccc;
         font-size: 1.1rem;
         flex: none;
     }
@@ -162,4 +162,40 @@ input[type="checkbox"] {
     &:active {
         transform: scale(0.95);
     }
+}
+
+.status-pane {
+    padding: 20px;
+    padding-top: 0;
+}
+
+.status-pane_mods {
+    width: 100%;
+    --border: 1px solid #41444b;
+    border-radius: 8px;
+    border-spacing: 0;
+    border-collapse: separate;
+    border: var(--border);
+    overflow: hidden;
+
+    tr :is(th, td) {
+        padding: 5px;
+    }
+
+    :is(th, td):not(:last-child) {
+        border-right: var(--border);
+    }
+
+    thead,
+    tbody,
+    tfoot {
+        > tr:not(:last-child) > :is(th, td),
+        &:not(:last-child) {
+            border-bottom: var(--border);
+        }
+    }
+}
+
+.status-pane_mod-error {
+    background-color: #831010;
 }

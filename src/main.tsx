@@ -87,13 +87,25 @@ async function queryPossibleGameVersions(allVersions: boolean): Promise<string[]
 type Mod = {
     path: string;
     basename: string;
+    status: "discovered" | "error";
+    error?: unknown | undefined;
 };
 
 async function gatherModsFromPath(path: string): Promise<Mod[]> {
-    return [{ path: "C:\\test.jar", basename: "test.jar" }];
+    console.log("gatherModsFromPath", path);
+    try {
+        if (Math.random() < 0.3) {
+            throw new Error("Random error");
+        } else {
+            return [{ path: path, basename: path, status: "discovered" }];
+        }
+    } catch (error) {
+        return [{ path: path, basename: path, status: "error", error: error }];
+    }
 }
 
 async function gatherModsFromPaths(paths: string[]): Promise<Mod[]> {
+    console.log("gatherModsFromPaths", paths);
     return (await Promise.all(paths.map(path => gatherModsFromPath(path)))).flat();
 }
 
@@ -225,11 +237,33 @@ Game version: ${gameVersion}`);
                 </div>
             </div>
             <div className="status-pane">
-                {mods.map(mod => (
-                    <div className="status-pane_mod" title={mod.path}>
-                        {mod.basename}
-                    </div>
-                ))}
+                <table className="status-pane_mods">
+                    <thead>
+                        <tr className="status-pane_mod-header">
+                            <th className="status-pane_mod-name">Name</th>
+                            <th className="status-pane_mod-status">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {mods.map((mod, i) => (
+                            <tr key={i} className={`status-pane_mod status-pane_mod-${mod.status}`} title={mod.path}>
+                                <td className="status-pane_mod-name">{mod.basename}</td>
+                                <td className="status-pane_mod-status">
+                                    {mod.status === "discovered" ? (
+                                        <></>
+                                    ) : mod.status === "error" ? (
+                                        <>Error: {String(mod.error)}</>
+                                    ) : (
+                                        (() => {
+                                            mod.status satisfies never;
+                                            throw new Error("Not exchastive");
+                                        })()
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </>
     );
