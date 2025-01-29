@@ -103,7 +103,6 @@ select {
     color: #ffffff;
     border: 1px solid #41444b;
     border-radius: 8px;
-    appearance: none;
     outline: none;
 
     &:hover {

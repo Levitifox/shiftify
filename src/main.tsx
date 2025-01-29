@@ -1,6 +1,7 @@
 import { webUtils, OpenDialogOptions, ipcRenderer } from "electron";
 import { createRoot } from "react-dom/client";
-import * as fs from "node:fs";
+import * as path from "node:path";
+import * as fs from "node:fs/promises";
 import { useState, useEffect, useRef } from "react";
 
 async function showOpenDialog(options: OpenDialogOptions): Promise<{ canceled: boolean; filePaths: string[] }> {
@@ -91,22 +92,26 @@ type Mod = {
     error?: unknown | undefined;
 };
 
-async function gatherModsFromPath(path: string): Promise<Mod[]> {
-    console.log("gatherModsFromPath", path);
+async function gatherModsFromPath(inputPath: string): Promise<Mod[]> {
+    console.log("gatherModsFromPath", inputPath);
     try {
-        if (Math.random() < 0.3) {
-            throw new Error("Random error");
+        const stat = await fs.stat(inputPath);
+        if (stat.isDirectory()) {
+            return await gatherModsFromPaths((await fs.readdir(inputPath)).map(name => path.join(inputPath, name)));
+        } else if (inputPath.endsWith(".jar")) {
+            return [{ path: inputPath, basename: path.basename(inputPath), status: "discovered" }];
         } else {
-            return [{ path: path, basename: path, status: "discovered" }];
+            return [];
         }
     } catch (error) {
-        return [{ path: path, basename: path, status: "error", error: error }];
+        return [{ path: inputPath, basename: path.basename(inputPath), status: "error", error: error }];
     }
 }
 
-async function gatherModsFromPaths(paths: string[]): Promise<Mod[]> {
-    console.log("gatherModsFromPaths", paths);
-    return (await Promise.all(paths.map(path => gatherModsFromPath(path)))).flat();
+async function gatherModsFromPaths(inputPaths: string[]): Promise<Mod[]> {
+    console.log("gatherModsFromPaths", inputPaths);
+
+    return (await Promise.all(inputPaths.map(inputPath => gatherModsFromPath(inputPath)))).flat();
 }
 
 function Main() {
