@@ -188,9 +188,11 @@ input[type="checkbox"] {
     thead,
     tbody,
     tfoot {
-        > tr:not(:last-child) > :is(th, td),
-        &:not(:last-child) {
-            border-bottom: var(--border);
+        > tr:not(:last-child),
+        &:not(:last-child) > tr:last-child {
+            & > :is(th, td) {
+                border-bottom: var(--border);
+            }
         }
     }
 }

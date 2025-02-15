@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { useState, useEffect, useRef } from "react";
+import * as StreamZip from "node-stream-zip";
+import TOML from "smol-toml";
 
 async function showOpenDialog(options: OpenDialogOptions): Promise<{ canceled: boolean; filePaths: string[] }> {
     return await ipcRenderer.invoke("dialog:showOpenDialog", options);
@@ -88,6 +90,7 @@ async function queryPossibleGameVersions(allVersions: boolean): Promise<string[]
 type Mod = {
     path: string;
     basename: string;
+    name?: string | undefined;
     status: "discovered" | "error";
     error?: unknown | undefined;
 };
@@ -99,12 +102,74 @@ async function gatherModsFromPath(inputPath: string): Promise<Mod[]> {
         if (stat.isDirectory()) {
             return await gatherModsFromPaths((await fs.readdir(inputPath)).map(name => path.join(inputPath, name)));
         } else if (inputPath.endsWith(".jar")) {
-            return [{ path: inputPath, basename: path.basename(inputPath), status: "discovered" }];
+            const zip = new StreamZip.async({ file: inputPath });
+            let name: string | undefined = undefined;
+            try {
+                const forgeModMetadata: unknown = TOML.parse((await zip.entryData("META-INF/mods.toml")).toString());
+                if (
+                    typeof forgeModMetadata === "object" &&
+                    forgeModMetadata !== null &&
+                    "mods" in forgeModMetadata &&
+                    Array.isArray(forgeModMetadata.mods) &&
+                    forgeModMetadata.mods.length !== 0 &&
+                    "displayName" in forgeModMetadata.mods[0] &&
+                    typeof forgeModMetadata.mods[0].displayName === "string"
+                ) {
+                    name = forgeModMetadata.mods[0].displayName;
+                }
+            } catch (_error) {}
+            try {
+                const neoforgeModMetadata: unknown = TOML.parse((await zip.entryData("META-INF/neoforge.mods.toml")).toString());
+                if (
+                    typeof neoforgeModMetadata === "object" &&
+                    neoforgeModMetadata !== null &&
+                    "mods" in neoforgeModMetadata &&
+                    Array.isArray(neoforgeModMetadata.mods) &&
+                    neoforgeModMetadata.mods.length !== 0 &&
+                    "displayName" in neoforgeModMetadata.mods[0] &&
+                    typeof neoforgeModMetadata.mods[0].displayName === "string"
+                ) {
+                    name = neoforgeModMetadata.mods[0].displayName;
+                }
+            } catch (_error) {}
+            try {
+                const fabricModMetadata: unknown = JSON.parse((await zip.entryData("fabric.mod.json")).toString().replaceAll("\n", " "));
+                if (
+                    typeof fabricModMetadata === "object" &&
+                    fabricModMetadata !== null &&
+                    "name" in fabricModMetadata &&
+                    typeof fabricModMetadata.name === "string"
+                ) {
+                    name = fabricModMetadata.name;
+                }
+            } catch (_error) {}
+            try {
+                const quiltModMetadata: unknown = JSON.parse((await zip.entryData("quilt.mod.json")).toString().replaceAll("\n", " "));
+                if (
+                    typeof quiltModMetadata === "object" &&
+                    quiltModMetadata !== null &&
+                    "quilt_loader" in quiltModMetadata &&
+                    typeof quiltModMetadata.quilt_loader === "object" &&
+                    quiltModMetadata.quilt_loader !== null &&
+                    "metadata" in quiltModMetadata.quilt_loader &&
+                    typeof quiltModMetadata.quilt_loader.metadata === "object" &&
+                    quiltModMetadata.quilt_loader.metadata !== null &&
+                    "name" in quiltModMetadata.quilt_loader.metadata &&
+                    typeof quiltModMetadata.quilt_loader.metadata.name === "string"
+                ) {
+                    name = quiltModMetadata.quilt_loader.metadata.name;
+                }
+            } catch (_error) {}
+            await zip.close();
+            if (name === undefined) {
+                throw new Error("Mod name not found");
+            }
+            return [{ path: inputPath, basename: path.basename(inputPath), name, status: "discovered" }];
         } else {
             return [];
         }
     } catch (error) {
-        return [{ path: inputPath, basename: path.basename(inputPath), status: "error", error: error }];
+        return [{ path: inputPath, basename: path.basename(inputPath), status: "error", error }];
     }
 }
 
@@ -245,29 +310,33 @@ Game version: ${gameVersion}`);
                 <table className="status-pane_mods">
                     <thead>
                         <tr className="status-pane_mod-header">
+                            <th className="status-pane_mod-file">File</th>
                             <th className="status-pane_mod-name">Name</th>
                             <th className="status-pane_mod-status">Status</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {mods.map((mod, i) => (
-                            <tr key={i} className={`status-pane_mod status-pane_mod-${mod.status}`} title={mod.path}>
-                                <td className="status-pane_mod-name">{mod.basename}</td>
-                                <td className="status-pane_mod-status">
-                                    {mod.status === "discovered" ? (
-                                        <></>
-                                    ) : mod.status === "error" ? (
-                                        <>Error: {String(mod.error)}</>
-                                    ) : (
-                                        (() => {
-                                            mod.status satisfies never;
-                                            throw new Error("Not exchastive");
-                                        })()
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
+                    {mods.length !== 0 && (
+                        <tbody>
+                            {mods.map((mod, i) => (
+                                <tr key={i} className={`status-pane_mod status-pane_mod-${mod.status}`} title={mod.path}>
+                                    <td className="status-pane_mod-file">{mod.basename}</td>
+                                    <td className="status-pane_mod-name">{mod.name}</td>
+                                    <td className="status-pane_mod-status">
+                                        {mod.status === "discovered" ? (
+                                            <></>
+                                        ) : mod.status === "error" ? (
+                                            <>{String(mod.error)}</>
+                                        ) : (
+                                            (() => {
+                                                mod.status satisfies never;
+                                                throw new Error("Not exchastive");
+                                            })()
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    )}
                 </table>
             </div>
         </>
