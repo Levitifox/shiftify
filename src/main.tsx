@@ -17,7 +17,7 @@ function FileInput({
     pathList,
     setPathList,
     ...props
-}: { multiple?: boolean; pathList: string; setPathList: (newPath: string) => void } & React.HTMLAttributes<HTMLInputElement>) {
+}: { multiple?: boolean; pathList: string; setPathList: (newPath: string) => void } & React.InputHTMLAttributes<HTMLInputElement>) {
     return (
         <input
             type="text"
@@ -91,7 +91,7 @@ type Mod = {
     path: string;
     basename: string;
     name?: string | undefined;
-    status: "discovered" | "error";
+    status: "error" | "discovered" | "done";
     error?: unknown | undefined;
 };
 
@@ -111,7 +111,7 @@ async function gatherModsFromPath(inputPath: string): Promise<Mod[]> {
                     forgeModMetadata !== null &&
                     "mods" in forgeModMetadata &&
                     Array.isArray(forgeModMetadata.mods) &&
-                    forgeModMetadata.mods.length !== 0 &&
+                    forgeModMetadata.mods.length > 0 &&
                     "displayName" in forgeModMetadata.mods[0] &&
                     typeof forgeModMetadata.mods[0].displayName === "string"
                 ) {
@@ -125,7 +125,7 @@ async function gatherModsFromPath(inputPath: string): Promise<Mod[]> {
                     neoforgeModMetadata !== null &&
                     "mods" in neoforgeModMetadata &&
                     Array.isArray(neoforgeModMetadata.mods) &&
-                    neoforgeModMetadata.mods.length !== 0 &&
+                    neoforgeModMetadata.mods.length > 0 &&
                     "displayName" in neoforgeModMetadata.mods[0] &&
                     typeof neoforgeModMetadata.mods[0].displayName === "string"
                 ) {
@@ -179,6 +179,31 @@ async function gatherModsFromPaths(inputPaths: string[]): Promise<Mod[]> {
     return (await Promise.all(inputPaths.map(inputPath => gatherModsFromPath(inputPath)))).flat();
 }
 
+async function* processMod(mod: Mod, outputPath: string, loader: string, gameVersion: string): AsyncGenerator<Mod, void, undefined> {
+    await new Promise(r => setTimeout(r, 100));
+    yield { ...mod, status: "done" };
+}
+
+async function* processMods(inputPaths: string[], outputPath: string, loader: string, gameVersion: string): AsyncGenerator<Mod[], void, undefined> {
+    console.log("process, inputPaths:", inputPaths, "outputPath:", outputPath, "loader:", loader, "gameVersion:", gameVersion);
+
+    let processedMods = [];
+    let unprocessedMods = await gatherModsFromPaths(inputPaths);
+    yield unprocessedMods;
+    while (unprocessedMods.length > 0) {
+        const currentMod = unprocessedMods[0];
+        unprocessedMods = unprocessedMods.slice(1);
+        let lastCurrentMod = currentMod;
+        for await (const newCurrentMod of processMod(currentMod, outputPath, loader, gameVersion)) {
+            yield [...processedMods, newCurrentMod, ...unprocessedMods];
+            lastCurrentMod = newCurrentMod;
+        }
+        processedMods.push(lastCurrentMod);
+    }
+
+    console.log("process done");
+}
+
 function Main() {
     const [releaseGameVersions, setReleaseGameVersions] = useState<string[]>([]);
     const [allGameVersions, setAllGameVersions] = useState<string[]>([]);
@@ -199,18 +224,24 @@ function Main() {
 
     const possibleGameVersions = showAllVersions ? allGameVersions : releaseGameVersions;
 
+    const [mods, setMods] = useState<Mod[]>([]);
+    const [processing, setProcessing] = useState(false);
+    const processedCount = useRef(0);
+
     function putInputPathList(newPathList: string) {
+        if (processing) {
+            return;
+        }
         currentInputPathList.current = newPathList;
         setInputPathList(newPathList);
     }
 
-    const [mods, setMods] = useState<Mod[]>([]);
-
     useEffect(() => {
         (async () => {
+            const oldProcessedCount = processedCount.current;
             const inputPaths = inputPathList === "" ? [] : inputPathList.split(";");
             const newMods = await gatherModsFromPaths(inputPaths);
-            if (currentInputPathList.current === inputPathList) {
+            if (currentInputPathList.current === inputPathList && processedCount.current === oldProcessedCount) {
                 setMods(newMods);
             }
         })();
@@ -222,14 +253,26 @@ function Main() {
             <div className="main-pane">
                 <div className="main-pane_row">
                     <div className="main-pane_row_label">Input:</div>
-                    <FileInput multiple pathList={inputPathList} setPathList={putInputPathList} className="main-pane_row_input"></FileInput>
-                    <BrowseButton type_="file" multiple setPathList={putInputPathList} className="main-pane_row_browse"></BrowseButton>
-                    <BrowseButton type_="directory" multiple setPathList={putInputPathList} className="main-pane_row_browse"></BrowseButton>
+                    <FileInput
+                        className="main-pane_row_input"
+                        multiple
+                        pathList={inputPathList}
+                        setPathList={putInputPathList}
+                        disabled={processing}
+                    ></FileInput>
+                    <BrowseButton className="main-pane_row_browse" type_="file" multiple setPathList={putInputPathList} disabled={processing}></BrowseButton>
+                    <BrowseButton
+                        className="main-pane_row_browse"
+                        type_="directory"
+                        multiple
+                        setPathList={putInputPathList}
+                        disabled={processing}
+                    ></BrowseButton>
                 </div>
                 <div className="main-pane_row">
                     <div className="main-pane_row_label">Output:</div>
-                    <FileInput pathList={outputPathList} setPathList={setOutputPathList} className="main-pane_row_input"></FileInput>
-                    <BrowseButton type_="directory" setPathList={setOutputPathList} className="main-pane_row_browse"></BrowseButton>
+                    <FileInput className="main-pane_row_input" pathList={outputPathList} setPathList={setOutputPathList} disabled={processing}></FileInput>
+                    <BrowseButton className="main-pane_row_browse" type_="directory" setPathList={setOutputPathList} disabled={processing}></BrowseButton>
                 </div>
                 <div className="main-pane_row">
                     <div className="main-pane_row_label">Loader:</div>
@@ -238,6 +281,7 @@ function Main() {
                         onChange={event => {
                             setLoader(event.target.value);
                         }}
+                        disabled={processing}
                     >
                         <option value="" disabled>
                             Choose loader
@@ -255,6 +299,7 @@ function Main() {
                         onChange={event => {
                             setGameVersion(event.target.value);
                         }}
+                        disabled={processing}
                     >
                         <option value="" disabled>
                             Choose game version
@@ -280,6 +325,9 @@ function Main() {
                     <button
                         className="main-pane_row_process"
                         onClick={() => {
+                            if (processing) {
+                                return;
+                            }
                             if (inputPathList === "") {
                                 alert("No input selected");
                                 return;
@@ -296,11 +344,17 @@ function Main() {
                                 alert("No game version selected");
                                 return;
                             }
-                            alert(`Input: ${inputPathList}
-Output: ${outputPathList}
-Loader: ${loader}
-Game version: ${gameVersion}`);
+                            (async () => {
+                                processedCount.current += 1;
+                                setProcessing(true);
+                                const inputPaths = inputPathList === "" ? [] : inputPathList.split(";");
+                                for await (const newMods of processMods(inputPaths, outputPathList, loader, gameVersion)) {
+                                    setMods(newMods);
+                                }
+                                setProcessing(false);
+                            })();
                         }}
+                        disabled={processing}
                     >
                         Process
                     </button>
@@ -315,17 +369,19 @@ Game version: ${gameVersion}`);
                             <th className="status-pane_mod-status">Status</th>
                         </tr>
                     </thead>
-                    {mods.length !== 0 && (
+                    {mods.length > 0 && (
                         <tbody>
                             {mods.map((mod, i) => (
                                 <tr key={i} className={`status-pane_mod status-pane_mod-${mod.status}`} title={mod.path}>
                                     <td className="status-pane_mod-file">{mod.basename}</td>
                                     <td className="status-pane_mod-name">{mod.name}</td>
                                     <td className="status-pane_mod-status">
-                                        {mod.status === "discovered" ? (
-                                            <></>
-                                        ) : mod.status === "error" ? (
+                                        {mod.status === "error" ? (
                                             <>{String(mod.error)}</>
+                                        ) : mod.status === "discovered" ? (
+                                            <></>
+                                        ) : mod.status === "done" ? (
+                                            <>OK</>
                                         ) : (
                                             (() => {
                                                 mod.status satisfies never;

@@ -73,7 +73,7 @@ h1 {
     border-radius: 8px;
 }
 
-.main-pane_row_browse {
+button {
     padding: 10px 20px;
     font-size: 1rem;
     background: linear-gradient(45deg, #4c8bf5, #3274d6);
@@ -85,13 +85,18 @@ h1 {
         transform 0.2s,
         background-color 0.3s;
 
-    &:hover {
+    &:not(:disabled):hover {
         background: linear-gradient(45deg, #3274d6, #205cb5);
         transform: scale(1.05);
     }
 
     &:active {
         transform: scale(0.95);
+    }
+
+    &:disabled {
+        background: #1f48b8;
+        color: #b9b9b9;
     }
 }
 
@@ -144,22 +149,9 @@ input[type="checkbox"] {
     width: 100%;
     padding: 12px 30px;
     font-size: 1.2rem;
-    background: linear-gradient(45deg, #4c8bf5, #3274d6);
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition:
-        transform 0.2s,
-        background-color 0.3s;
 
-    &:hover {
-        background: linear-gradient(45deg, #3274d6, #205cb5);
+    &:not(:disabled):hover {
         transform: scale(1.02);
-    }
-
-    &:active {
-        transform: scale(0.95);
     }
 }
 
